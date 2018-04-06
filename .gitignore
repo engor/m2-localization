@@ -1,0 +1,6 @@
+
+*.bak
+*.buildv*
+*.products/
+*.app
+*.DS_*

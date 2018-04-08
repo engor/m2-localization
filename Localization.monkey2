@@ -77,6 +77,13 @@ Class Localization
 	#End
 	Operator []:String( key:String )
 		
+		If Not _overrides.Empty
+			Local items:=_overrides[_lang]
+			If items And items.Contains( key )
+				Return items[key]
+			Endif
+		Endif
+		
 		If _cur.Contains( key ) Return _cur[key]
 		
 		Local s:="$$"+key+"$$"
@@ -162,10 +169,38 @@ Class Localization
 		Next
 	End
 	
+	#Rem monkeydoc Add value to override data.
+	This value will be used instead of loaded from disk.
+	#End
+	Method AddOverrided( lang:String,key:String,value:String,updateBindings:Bool=True )
+		
+		Local items:=_overrides[lang]
+		If Not items
+			items=New StringMap<String>
+			_overrides[lang]=items
+		Endif
+		items[key]=value
+		
+		If updateBindings
+			ReLocalizeKey( key )
+		Endif
+	End
+	
+	#Rem monkeydoc Remove value from overrided.
+	#End
+	Method RemoveOverrided( lang:String,key:String )
+	
+		Local items:=_overrides[lang]
+		If items
+			items.Remove( key )
+		Endif
+	End
+	
 	Private
 	
 	Field _lang:String
 	Field _data:StringMap<StringMap<String>>
+	Field _overrides:=New StringMap<StringMap<String>>
 	Field _cur:StringMap<String>
 	Field _all:String[]
 	Field _def:String
@@ -241,6 +276,23 @@ Class Localization
 				f( Self[key] )
 			Next
 		Next
+	End
+	
+	Method ReLocalizeKey( key:String )
+	
+		Local items:=_bindedItems[key]
+		If items
+			For Local i:=Eachin items
+				i.Localize( Self[key] )
+			Next
+		Endif
+		
+		Local funcs:=_bindedFuncs[key]
+		If funcs
+			For Local f:=Eachin funcs
+				f( Self[key] )
+			Next
+		Endif
 	End
 	
 	Method FromJson:StringMap<String>( data:StringMap<JsonValue> )

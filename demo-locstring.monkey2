@@ -1,5 +1,5 @@
 
-Namespace demo.localization.plaintext
+Namespace demo.localization.locstring
 
 #Import "<std>"
 #Import "<mojo>"
@@ -20,27 +20,19 @@ Class MyWindow Extends Window
 		
 		Super.New( "",640,480,WindowFlags.Resizable )
 		
-		' we update all texts when lang was changed only
-		'
-		' don't use LocString() in your render loop
-		' because it will find string in Map every time
-		
-		Locale.LangChanged+=Texts.Actualize
-		
-		' also need to assign texts for current lang
-		Texts.Actualize()
-		
 		' update window title via lambda-binding
 		Localized( "app-title",Lambda( t:String )
 			Title=t
 		End )
 		
+		_hint=New LocString( "hint" )
+		
 	End
 	
 	Method OnRender( canvas:Canvas ) Override
 		
-		canvas.DrawText( Texts.HelloWorld,20,50 )
-		canvas.DrawText( Texts.Hint,20,120 )
+		' use LocString as a plain string here
+		canvas.DrawText( _hint,20,120 )
 		
 		If Keyboard.KeyHit( Key.Enter )
 			Local lang:=Locale.Lang="en" ? "ru" Else "en"
@@ -50,23 +42,9 @@ Class MyWindow Extends Window
 		RequestRender()
 	End
 	
-	' store all texts of app in special class
-	' to simplify access for them
-	' use them as read-only members
-	'
-	Class Texts
-		
-		Global AppTitle:=""
-		Global HelloWorld:=""
-		Global Hint:=""
-		
-		Function Actualize()
-			
-			AppTitle=Localized( "app-title" )
-			HelloWorld=Localized( "hello-world" )
-			Hint=Localized( "hint" )
-		End
-	End
+	Private
+	
+	Field _hint:LocString
 	
 End
 

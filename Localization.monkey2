@@ -63,7 +63,7 @@ Class Localization
 		_lang=lang ?Else _def
 		
 		If _allInOneFile
-			_cur=_data[_lang].ToObject()
+			_cur=_data[_lang]
 		Else
 			LoadFolder( _path )
 		Endif
@@ -77,7 +77,12 @@ Class Localization
 	#End
 	Operator []:String( key:String )
 		
-		Return _cur.Contains( key ) ? _cur[key].ToString() Else "$$"+key+"$$"
+		If _cur.Contains( key ) Return _cur[key]
+		
+		Local s:="$$"+key+"$$"
+		_cur[key]=s
+		
+		Return s
 	End
 	
 	#Rem monkeydoc Return array of all available langs.
@@ -101,41 +106,86 @@ Class Localization
 		Return _lang
 	End
 	
-	#Rem monkeydoc Localize target and store it internally,
-	and automatically re-localize when lang will be changed.
+	#Rem monkeydoc Bind any 'Localizable' - store it internally,
+	and automatically call to their Localize() method when lang will be changed.
 	#End
-	Method Localize<T>( target:T,key:String ) Where T Implements Localizable
+	Method Bind<T>( key:String,target:T ) Where T Implements Localizable
 	
 		target.Localize( Self[key] )
 	
-		Local items:=_linked[key]
+		Local items:=_bindedItems[key]
 		If Not items
 			items=New Stack<Localizable>
-			_linked[key]=items
+			_bindedItems[key]=items
 		Endif
 		If Not items.Contains( target )
 			items.Add( target )
 		Endif
 	End
 	
+	#Rem monkeydoc Bind any function with signature of 'Void(String)' - store it internally,
+	and automatically call when lang will be changed.
+	#End
+	Method Bind( key:String,func:Void(String) )
+	
+		func( Self[key] )
+	
+		Local items:=_bindedFuncs[key]
+		If Not items
+			items=New Stack<Void(String)>
+			_bindedFuncs[key]=items
+		Endif
+		If Not items.Contains( func )
+			items.Add( func )
+		Endif
+	End
+	
+	#Rem monkeydoc You can unbind if you want.
+	#End
+	Method UnBind<T>( target:T ) Where T Implements Localizable
+	
+		For Local key:=Eachin _bindedItems.Keys
+			Local items:=_bindedItems[key]
+			Local ok:=items.Remove( target )
+			If ok Exit
+		Next
+	End
+	
+	#Rem monkeydoc You can unbind if you want.
+	#End
+	Method UnBind( func:Void(String) )
+	
+		For Local key:=Eachin _bindedFuncs.Keys
+			Local funcs:=_bindedFuncs[key]
+			Local ok:=funcs.Remove( func )
+			If ok Exit
+		Next
+	End
+	
 	Private
 	
 	Field _lang:String
-	Field _data:JsonObject
-	Field _cur:StringMap<JsonValue>
+	Field _data:StringMap<StringMap<String>>
+	Field _cur:StringMap<String>
 	Field _all:String[]
 	Field _def:String
 	Field _allInOneFile:Bool
 	Field _path:String
-	Field _linked:=New StringMap<Stack<Localizable>>
+	Field _bindedItems:=New StringMap<Stack<Localizable>>
+	Field _bindedFuncs:=New StringMap<Stack<Void(String)>>
 	
 	Method LoadFile( path:String )
 		
-		_data=JsonObject.Load( path )
+		Local data:=JsonObject.Load( path )
 		
-		GrabInfo( _data )
+		GrabInfo( data )
 		
-		_cur=_data[_lang].ToObject()
+		_data=New StringMap<StringMap<String>>
+		For Local lang:=Eachin _all
+			_data[lang]=FromJson( data[lang].ToObject() )
+		Next
+		
+		_cur=_data[_lang]
 		
 		_allInOneFile=True
 	End
@@ -149,11 +199,9 @@ Class Localization
 		
 		GrabInfo( jinfo )
 		
-		_data=JsonObject.Load( dir+_lang+".json" )
+		_cur=FromJson( JsonObject.Load( dir+_lang+".json" ).ToObject() )
 		
-		Assert( _data<>Null,"Can't load localization data for "+_lang+" lang!" )
-		
-		_cur=_data.ToObject()
+		Assert( _cur<>Null,"Can't load localization data for "+_lang+" lang!" )
 		
 		_allInOneFile=False
 	End
@@ -180,18 +228,30 @@ Class Localization
 	
 	Method ReLocalizeAll()
 		
-		For Local key:=Eachin _linked.Keys
-			Local items:=_linked[key]
+		For Local key:=Eachin _bindedItems.Keys
+			Local items:=_bindedItems[key]
 			For Local i:=Eachin items
 				i.Localize( Self[key] )
 			Next
 		Next
+		
+		For Local key:=Eachin _bindedFuncs.Keys
+			Local funcs:=_bindedFuncs[key]
+			For Local f:=Eachin funcs
+				f( Self[key] )
+			Next
+		Next
 	End
 	
-	Method UnAssign<T>( withText:T )
-	
-		'TODO
-	
+	Method FromJson:StringMap<String>( data:StringMap<JsonValue> )
+		
+		Local map:=New StringMap<String>
+		
+		For Local key:=Eachin data.Keys
+			map[key]=data[key].ToString()
+		Next
+		
+		Return map
 	End
 	
 End
@@ -204,18 +264,52 @@ Interface Localizable
 	
 End
 
-#Rem monkeydoc Call Localization.Localize() on target and return itself.
+#Rem monkeydoc Call Localization.Bind() on target and return itself.
 #End
-Function Localized<T>:T( target:T,key:String ) Where T Implements Localizable
+Function Localized<T>:T( key:String,target:T ) Where T Implements Localizable
 	
-	Locale.Localize( target,key )
+	Locale.Bind( key,target )
 	
 	Return target
 End
 
+#Rem monkeydoc Call Localization.Bind() on func and return itself.
+#End
+Function Localized:Void(String)( key:String,func:Void(String) )
+	
+	Locale.Bind( key,func )
+	
+	Return func
+End
+
 #Rem monkeydoc Helper to get localized string.
 #End
-Function LocString:String( key:String )
+Function Localized:String( key:String )
 	
 	Return Locale[key]
+End
+
+#Rem monkeydoc Wrapper stored localized string.
+You can use it as a plain string thanks to To:String operator.
+#End
+Class LocString Implements Localizable
+	
+	Method New( key:String )
+		
+		Locale.Bind( key,Self )
+	End
+	
+	Method Localize( t:String )
+		
+		_val=t
+	End
+	
+	Operator To:String()
+		
+		Return _val
+	End
+	
+	Private
+	
+	Field _val:String
 End

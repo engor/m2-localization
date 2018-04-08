@@ -42,15 +42,15 @@ Class MyWindow Extends Window Implements Localizable
 		' you'll find LocLabel and LocButton below
 		'
 		Local docker:=New DockingView
-		docker.AddView( Localized( New LocLabel,"hello-world" ),"top"  )
+		docker.AddView( Localized( "hello-world",New LocLabel ),"top"  )
 		docker.AddView( New Label( "" ),"top"  )
-		docker.AddView( Localized( New LocButton,"button-remove" ),"top"  )
-		docker.AddView( New Label( "" ),"top"  )
-		
-		docker.AddView( Localized( New LocButton,"button-close" ),"top"  )
+		docker.AddView( Localized( "button-remove",New LocButton ),"top"  )
 		docker.AddView( New Label( "" ),"top"  )
 		
-		Local switch:=Localized( New LocButton,"switch-lang" )
+		docker.AddView( Localized( "button-close",New LocButton ),"top"  )
+		docker.AddView( New Label( "" ),"top"  )
+		
+		Local switch:=Localized( "switch-lang",New LocButton )
 		switch.Clicked=Lambda()
 			' switch lang
 			Local lang:=Locale.Lang="en" ? "ru" Else "en"
@@ -61,7 +61,11 @@ Class MyWindow Extends Window Implements Localizable
 		
 		ContentView=docker
 		
-		Localized( Self,"app-title" ) ' bind localization to self too
+		' update window title via lambda-binding
+		Localized( "app-title",Lambda( t:String )
+			Title=t
+		End )
+		
 	End
 	
 	Method Localize( t:String )

@@ -1,8 +1,10 @@
 {
-    "app-title":"Пример локализации",
-    "button-remove":"Удалить",
-    "button-close":"Закрыть",
-    "hello-world":"Привет, мир!",
-    "switch-lang":"Переключить язык",
-    "hint":"Нажмите Enter чтобы переключить язык"
+    "ru":{
+        "app-title":"Пример локализации",
+        "button-remove":"Удалить",
+        "button-close":"Закрыть",
+        "hello-world":"Привет, мир!",
+        "switch-lang":"Переключить язык",
+        "hint":"Нажмите Enter чтобы переключить язык"
+    }
 }

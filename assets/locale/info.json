@@ -1,4 +1,5 @@
 {
     "langs":["ru","en"],
-    "default":"en"
+    "default":"en",
+    "format":"json"
 }

@@ -31,6 +31,10 @@ Class Localization
 	Method New( defLocale:String="en" )
 		
 		_def=defLocale
+		
+		' built-in loaders
+		'
+		RegisterLoader( "json",New JsonLocLoader )
 	End
 	
 	#Rem monkeydoc Load localization data from file or folder.
@@ -96,7 +100,7 @@ Class Localization
 	#End
 	Property AllLangs:String[]()
 		
-		Return _all
+		Return _langs
 	End
 	
 	#Rem monkeydoc Return default lang.
@@ -196,29 +200,39 @@ Class Localization
 		Endif
 	End
 	
+	#Rem monkeydoc Register loader for desired file format.
+	Format is extension of file w/o dot at the beginning ("json","csv").
+	Note: every registered loader overrides existing one.
+	#End
+	Function RegisterLoader( format:String,loader:LocLoader )
+		
+		_loaders[format]=loader
+	End
+	
 	Private
 	
 	Field _lang:String
 	Field _data:StringMap<StringMap<String>>
 	Field _overrides:=New StringMap<StringMap<String>>
 	Field _cur:StringMap<String>
-	Field _all:String[]
+	Field _langs:String[]
 	Field _def:String
+	Field _format:String
 	Field _allInOneFile:Bool
 	Field _path:String
 	Field _bindedItems:=New StringMap<Stack<Localizable>>
 	Field _bindedFuncs:=New StringMap<Stack<Void(String)>>
+	Global _loaders:=New StringMap<LocLoader>
 	
 	Method LoadFile( path:String )
 		
-		Local data:=JsonObject.Load( path )
+		_format=ExtractExt( path ).Slice( 1 ) ' strip dot
+		Local loader:=_loaders[_format]
+		Assert( loader<>Null,"Unsupported format - '"+_format+"' !" )
 		
-		GrabInfo( data )
-		
-		_data=New StringMap<StringMap<String>>
-		For Local lang:=Eachin _all
-			_data[lang]=FromJson( data[lang].ToObject() )
-		Next
+		_data=loader.LoadAll( path )
+		_langs=loader.Langs
+		_def=loader.DefaultLang
 		
 		_cur=_data[_lang]
 		
@@ -232,9 +246,15 @@ Class Localization
 		
 		Assert( jinfo<>Null,"Can't load localization config from "+dir+"info.json!" )
 		
-		GrabInfo( jinfo )
+		Local info:=LocInfo.Parse( jinfo )
+		_def=info.def
+		_format=info.format
+		_langs=info.langs
 		
-		_cur=FromJson( JsonObject.Load( dir+_lang+".json" ).ToObject() )
+		Local loader:=_loaders[_format]
+		Assert( loader<>Null,"Unsupported format - '"+_format+"' !" )
+		
+		_cur=loader.LoadLang( dir+_lang+".json",_lang )
 		
 		Assert( _cur<>Null,"Can't load localization data for "+_lang+" lang!" )
 		
@@ -248,17 +268,6 @@ Class Localization
 		'_cur=_data.ToObject()
 		
 		_allInOneFile=True
-	End
-	
-	Method GrabInfo( json:JsonObject )
-		
-		_def=json.GetString( "default" )
-		
-		Local jarr:=json.GetArray( "langs" )
-		_all=New String[jarr.Data.Length]
-		For Local i:=0 Until _all.Length
-			_all[i]=jarr.Data[i].ToString()
-		Next
 	End
 	
 	Method ReLocalizeAll()
@@ -293,17 +302,6 @@ Class Localization
 				f( Self[key] )
 			Next
 		Endif
-	End
-	
-	Method FromJson:StringMap<String>( data:StringMap<JsonValue> )
-		
-		Local map:=New StringMap<String>
-		
-		For Local key:=Eachin data.Keys
-			map[key]=data[key].ToString()
-		Next
-		
-		Return map
 	End
 	
 End
@@ -364,4 +362,100 @@ Class LocString Implements Localizable
 	Private
 	
 	Field _val:String
+End
+
+
+Class LocLoader
+	
+	Property Format:String()
+		Return _format
+	End
+	
+	Property Langs:String[]()
+		Return _langs
+	End
+	
+	Property DefaultLang:String()
+		Return _def
+	End
+	
+	Property Data:StringMap<StringMap<String>>()
+		Return _data
+	End
+	
+	Method LoadAll:StringMap<StringMap<String>>( path:String ) Abstract
+	Method LoadLang:StringMap<String>( path:String,lang:String ) Abstract
+
+	Protected
+	
+	Field _data:StringMap<StringMap<String>>
+	Field _def:String
+	Field _langs:String[]
+	Field _format:String
+End
+
+Class LocInfo
+	
+	Field def:String
+	Field langs:String[]
+	Field format:String
+	
+	Function Parse:LocInfo( json:JsonObject )
+		
+		Local info:=New LocInfo
+		info.def=json.GetString( "default" )
+		info.format=json.GetString( "format" )
+		
+		Local jarr:=json.GetArray( "langs" )
+		info.langs=New String[jarr.Data.Length]
+		For Local i:=0 Until info.langs.Length
+			info.langs[i]=jarr.Data[i].ToString()
+		Next
+		
+		Return info
+	End
+End
+
+Class JsonLocLoader Extends LocLoader
+	
+	Method LoadAll:StringMap<StringMap<String>>( path:String ) Override
+	
+		Local data:=JsonObject.Load( path )
+	
+		Local info:=LocInfo.Parse( data )
+		_def=info.def
+		_format="json"
+		_langs=info.langs
+	
+		_data=New StringMap<StringMap<String>>
+		For Local lang:=Eachin _langs
+			_data[lang]=FromJson( data[lang].ToObject() )
+		Next
+		
+		Return _data
+	End
+	
+	Method LoadLang:StringMap<String>( path:String,lang:String ) Override
+		
+		Local data:=JsonObject.Load( path )
+		
+		_data=New StringMap<StringMap<String>>
+		_data[lang]=FromJson( data[lang].ToObject() )
+		
+		Return _data[lang]
+	End
+	
+	Private
+	
+	Method FromJson:StringMap<String>( data:StringMap<JsonValue> )
+	
+		Local map:=New StringMap<String>
+	
+		For Local key:=Eachin data.Keys
+			map[key]=data[key].ToString()
+		Next
+	
+		Return map
+	End
+	
 End

@@ -14,6 +14,22 @@ Using mojox..
 Using jentos.locale
 
 
+Function Main()
+	
+	' we can load single file format
+	Locale.Load( "asset::translation.json","en" )
+	
+	' or directory format
+	'Locale.Load( "asset::locale/","en" )
+	
+	New AppInstance
+	
+	New MyWindow
+	
+	App.Run()
+End
+
+
 Class MyWindow Extends Window
 
 	Method New()
@@ -52,19 +68,4 @@ Class MyWindow Extends Window
 	
 	Field _hint:LocString
 	
-End
-
-Function Main()
-	
-	' we can load single file format
-	'Locale.Load( "asset::translation.json","en" )
-	
-	' or directory format
-	Locale.Load( "asset::locale/","en" )
-	
-	New AppInstance
-	
-	New MyWindow
-	
-	App.Run()
 End

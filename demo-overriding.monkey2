@@ -1,5 +1,5 @@
 
-Namespace demo.localization.overriding
+Namespace jentos.locale.demo.overriding
 
 #Import "<std>"
 #Import "<mojo>"
@@ -11,7 +11,7 @@ Namespace demo.localization.overriding
 Using std..
 Using mojo..
 Using mojox..
-Using jentos.locale
+Using jentos.locale..
 
 
 Function Main()

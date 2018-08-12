@@ -1,5 +1,5 @@
 
-Namespace demo.localization.mojox
+Namespace jentos.locale.demo.mojox
 
 #Import "<std>"
 #Import "<mojo>"
@@ -11,7 +11,7 @@ Namespace demo.localization.mojox
 Using std..
 Using mojo..
 Using mojox..
-Using jentos.locale
+Using jentos.locale..
 
 
 Function Main()
@@ -31,26 +31,27 @@ Function Main()
 	App.Run()
 End
 
-' note: we implement Localizable here to change window title
-'
-Class MyWindow Extends Window Implements Localizable
+
+Class MyWindow Extends Window
 
 	Method New()
 		
 		Super.New( "",640,480,WindowFlags.Resizable )
 		
-		' you'll find LocLabel and LocButton below
+		' these are mojox Label and Button as is!
+		' and they support localization now
+		' we use short syntax here: Localized<ViewType>( localizationKey )
 		'
 		Local docker:=New DockingView
-		docker.AddView( Localized( "hello-world",New LocLabel ),"top"  )
+		docker.AddView( Localized<Label>( "hello-world" ),"top"  )
 		docker.AddView( New Label( "" ),"top"  )
-		docker.AddView( Localized( "button-remove",New LocButton ),"top"  )
-		docker.AddView( New Label( "" ),"top"  )
-		
-		docker.AddView( Localized( "button-close",New LocButton ),"top"  )
+		docker.AddView( Localized<Button>( "button-remove" ),"top"  )
 		docker.AddView( New Label( "" ),"top"  )
 		
-		Local switch:=Localized( "switch-lang",New LocButton )
+		docker.AddView( Localized<Button>( "button-close" ),"top"  )
+		docker.AddView( New Label( "" ),"top"  )
+		
+		Local switch:=Localized<Button>( "switch-lang" )
 		switch.Clicked=Lambda()
 			' switch lang
 			Local lang:=Locale.Lang="en" ? "ru" Else "en"
@@ -62,9 +63,7 @@ Class MyWindow Extends Window Implements Localizable
 		ContentView=docker
 		
 		' update window title via lambda-binding
-		Localized( "app-title",Lambda( t:String )
-			Title=t
-		End )
+		Localized( "app-title", Self )
 		
 	End
 	
@@ -75,29 +74,18 @@ Class MyWindow Extends Window Implements Localizable
 	
 End
 
-' implement Localizable to have auto-localization
-' when lang will be changed
-'
-Class LocButton Extends Button Implements Localizable
-	
-	Method New( text:String="",icon:Image=Null )
-		Super.New( text,icon )
-	End
-	
-	Method Localize( t:String )
-		
-		Text=t
-	End
-End
 
-' implement Localizable to have auto-localization
+' implement Localize method to have auto-localization
 ' when lang will be changed
 '
-Class LocLabel Extends Label Implements Localizable
-	
-	Method New( text:String="",icon:Image=Null )
-		Super.New( text,icon )
-	End
+' Note!
+' 1. We just add method, no need to write constructor
+' 2. No need to add such method into Button because of 
+' "Button Extends Label" take it from Label.
+' 3. We can bring localization support even into Final classes
+' that we can't extends.
+
+Class Label Extension
 	
 	Method Localize( t:String )
 		

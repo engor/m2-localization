@@ -1,5 +1,5 @@
 
-Namespace demo.localization.locstring
+Namespace jentos.locale.demo.locstring
 
 #Import "<std>"
 #Import "<mojo>"
@@ -11,7 +11,7 @@ Namespace demo.localization.locstring
 Using std..
 Using mojo..
 Using mojox..
-Using jentos.locale
+Using jentos.locale..
 
 
 Function Main()

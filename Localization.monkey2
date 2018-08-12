@@ -6,7 +6,7 @@ Namespace jentos.locale
 Const Locale:=New Localization
 
 #Rem monkeydoc Localization class.
-You can load data from file of folder.
+You can load data from file or folder.
 
 File is json format, with keys:
 "langs":["ru","en", etc] - array with all supported langs
@@ -35,6 +35,7 @@ Class Localization
 		' built-in loaders
 		'
 		RegisterLoader( "json",New JsonLocLoader )
+		RegisterLoader( "ini",New IniLocLoader )
 	End
 	
 	#Rem monkeydoc Load localization data from file or folder.
@@ -115,23 +116,6 @@ Class Localization
 	Property Lang:String()
 		
 		Return _lang
-	End
-	
-	#Rem monkeydoc Bind any 'Localizable' - store it internally,
-	and automatically call to their Localize() method when lang will be changed.
-	#End
-	Method Bind<T>( key:String,target:T ) Where T Implements Localizable
-	
-		target.Localize( Self[key] )
-	
-		Local items:=_bindedItems[key]
-		If Not items
-			items=New Stack<Localizable>
-			_bindedItems[key]=items
-		Endif
-		If Not items.Contains( target )
-			items.Add( target )
-		Endif
 	End
 	
 	#Rem monkeydoc Bind any function with signature of 'Void(String)' - store it internally,
@@ -220,7 +204,6 @@ Class Localization
 	Field _format:String
 	Field _allInOneFile:Bool
 	Field _path:String
-	Field _bindedItems:=New StringMap<Stack<Localizable>>
 	Field _bindedFuncs:=New StringMap<Stack<Void(String)>>
 	Global _loaders:=New StringMap<LocLoader>
 	
@@ -254,7 +237,7 @@ Class Localization
 		Local loader:=_loaders[_format]
 		Assert( loader<>Null,"Unsupported format - '"+_format+"' !" )
 		
-		_cur=loader.LoadLang( dir+_lang+".json",_lang )
+		_cur=loader.LoadLang( dir+_lang+"."+_format,_lang )
 		
 		Assert( _cur<>Null,"Can't load localization data for "+_lang+" lang!" )
 		
@@ -272,13 +255,6 @@ Class Localization
 	
 	Method ReLocalizeAll()
 		
-		For Local key:=Eachin _bindedItems.Keys
-			Local items:=_bindedItems[key]
-			For Local i:=Eachin items
-				i.Localize( Self[key] )
-			Next
-		Next
-		
 		For Local key:=Eachin _bindedFuncs.Keys
 			Local funcs:=_bindedFuncs[key]
 			For Local f:=Eachin funcs
@@ -289,13 +265,6 @@ Class Localization
 	
 	Method ReLocalizeKey( key:String )
 	
-		Local items:=_bindedItems[key]
-		If items
-			For Local i:=Eachin items
-				i.Localize( Self[key] )
-			Next
-		Endif
-		
 		Local funcs:=_bindedFuncs[key]
 		If funcs
 			For Local f:=Eachin funcs
@@ -306,19 +275,21 @@ Class Localization
 	
 End
 
-#Rem monkeydoc Interface needed for Localization.Localize() method.
-#End
-Interface Localizable
-	
-	Method Localize( t:String )
-	
-End
-
 #Rem monkeydoc Call Localization.Bind() on target and return itself.
 #End
-Function Localized<T>:T( key:String,target:T ) Where T Implements Localizable
+Function Localized<T>:T( key:String,target:T )
 	
-	Locale.Bind( key,target )
+	Locale.Bind( key,target.Localize )
+	
+	Return target
+End
+
+#Rem monkeydoc Create *New T(string)*, call Localization.Bind() on it and return it.
+#End
+Function Localized<T>:T( key:String )
+	
+	Local target:=New T( "" )
+	Locale.Bind( key,target.Localize )
 	
 	Return target
 End
@@ -342,11 +313,11 @@ End
 #Rem monkeydoc Wrapper stored localized string.
 You can use it as a plain string thanks to To:String operator.
 #End
-Class LocString Implements Localizable
+Class LocString
 	
 	Method New( key:String )
 		
-		Locale.Bind( key,Self )
+		Locale.Bind( key,Self.Localize )
 	End
 	
 	Method Localize( t:String )
@@ -459,3 +430,51 @@ Class JsonLocLoader Extends LocLoader
 	End
 	
 End
+
+Class IniLocLoader Extends LocLoader
+	
+	Method LoadAll:StringMap<StringMap<String>>( path:String ) Override
+	
+		Local lines:=LoadString( path,True ).Split( "~n" )
+		_data=New StringMap<StringMap<String>>
+		Local map:StringMap<String>
+		For Local line:=Eachin lines
+			line=line.Trim()
+			If Not line Continue
+			If line.StartsWith( "[" )
+				Local group:=line.Slice( 1,line.Length-1 )
+				map=New StringMap<String>
+				_data[group]=map
+			Else
+				Local pair:=line.Split( "=" )
+				map[pair[0].Trim()]=pair[1].Trim().Replace( "\n","~n" )
+			Endif
+		Next
+		
+		_def=_data["info"]["default"]
+		_langs=_data["info"]["langs"].Split( "," )
+		_format="ini"
+		
+		Return _data
+	End
+	
+	Method LoadLang:StringMap<String>( path:String,lang:String ) Override
+		
+		Local lines:=LoadString( path,True ).Split( "~n" )
+		_data=New StringMap<StringMap<String>>
+		Local map:=New StringMap<String>
+		For Local line:=Eachin lines
+			line=line.Trim()
+			If line And Not line.StartsWith( "[" )
+				Local pair:=line.Split( "=" )
+				map[pair[0].Trim()]=pair[1].Trim().Replace( "\n","~n" )
+			Endif
+		Next
+		
+		_data[lang]=map
+		
+		Return map
+	End
+	
+End
+

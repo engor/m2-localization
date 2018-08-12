@@ -1,5 +1,5 @@
 
-Namespace demo.localization.plaintext
+Namespace jentos.locale.demo.plaintext
 
 #Import "<std>"
 #Import "<mojo>"
@@ -11,7 +11,7 @@ Namespace demo.localization.plaintext
 Using std..
 Using mojo..
 Using mojox..
-Using jentos.locale
+Using jentos.locale..
 
 
 Function Main()

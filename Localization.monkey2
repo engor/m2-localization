@@ -82,6 +82,13 @@ Class Localization
 	#End
 	Operator []:String( key:String )
 		
+		If Not _providers.Empty
+			Local found:=False
+			For Local provide:=Eachin _providers
+				Local value:=provide( key,Varptr found )
+				If found Return value
+			Next
+		Endif
 		If Not _overrides.Empty
 			Local items:=_overrides[_lang]
 			If items And items.Contains( key )
@@ -193,10 +200,24 @@ Class Localization
 		_loaders[format]=loader
 	End
 	
+	#Rem monkeydoc Register provider that will be used inside of indexer [] operator.
+	Each provider return value for a key, and set 'eaten' flag.
+	If eaten flag set to true - localization return value from this provider.
+	Else looking at next registered provider.
+	And then try to find value inside of itself.
+	#End
+	Function RegisterValuesProvider( providerFunc:String(key:String,eaten:Bool Ptr) )
+		
+		_providers.Add( providerFunc )
+	End
+	
+	Protected
+	
+	Field _data:StringMap<StringMap<String>>
+	
 	Private
 	
 	Field _lang:String
-	Field _data:StringMap<StringMap<String>>
 	Field _overrides:=New StringMap<StringMap<String>>
 	Field _cur:StringMap<String>
 	Field _langs:String[]
@@ -206,6 +227,7 @@ Class Localization
 	Field _path:String
 	Field _bindedFuncs:=New StringMap<Stack<Void(String)>>
 	Global _loaders:=New StringMap<LocLoader>
+	Global _providers:=New Stack<String(String,Bool Ptr)>
 	
 	Method LoadFile( path:String )
 		
